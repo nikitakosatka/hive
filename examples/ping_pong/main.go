@@ -76,7 +76,7 @@ func (n *PingPongNode) StartPinging(targetID string, interval time.Duration) {
 func main() {
 	// Create simulator with reliable network and synchronous time model
 	config := hive.NewConfig(
-		hive.WithNetwork(network.NewReliableNetwork()),
+		hive.WithNetwork(network.NewFairLossNetwork(0.5, 0)),
 		hive.WithTime(timemodel.NewTime(timemodel.Synchronous, &timemodel.ConstantLatency{Latency: 50 * time.Millisecond}, 0.0)),
 		hive.WithNodesFailures(failure.NewCrashStop(0.0)), // No crashes
 	)

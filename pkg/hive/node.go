@@ -11,7 +11,7 @@ const (
 )
 
 // Node represents a node in the distributed system.
-// Students should implement this interface to create their own nodes.
+// Able to implement this interface to create their own nodes.
 type Node interface {
 	// ID returns the unique identifier of this node
 	ID() string
@@ -53,7 +53,7 @@ type SendConfigurableNode interface {
 	SetNodeRef(node Node)
 }
 
-// BaseNode provides a basic implementation of Node that students can embed.
+// BaseNode provides a basic implementation of Node that you can embed.
 // It handles message queuing and basic lifecycle management.
 type BaseNode struct {
 	id      string
@@ -158,15 +158,14 @@ func (n *BaseNode) processMessages() {
 }
 
 // Receive processes an incoming message.
-// Students should override this method in their node implementations.
+// Other Node implementations should override this method.
 func (n *BaseNode) Receive(msg *Message) error {
 	// Default implementation does nothing
-	// Students should override this
+	// override this
 	return nil
 }
 
 // Send sends a message to another node.
-// Students can wrap this to add logical clock logic.
 func (n *BaseNode) Send(to string, payload interface{}) error {
 	n.mu.RLock()
 	if !n.running {
@@ -200,7 +199,7 @@ func (n *BaseNode) SetNodeRef(node Node) {
 }
 
 // SendMessage sends a pre-constructed message.
-// This allows students to wrap Send() and add custom metadata (e.g., logical clocks).
+// This allows to wrap Send() and add custom metadata (e.g., logical clocks).
 func (n *BaseNode) SendMessage(msg *Message) error {
 	n.mu.RLock()
 	if !n.running {
@@ -245,7 +244,7 @@ func (n *BaseNode) EnqueueMessage(msg *Message) error {
 }
 
 // Context returns the node's context for cancellation.
-// Students can use this to create goroutines that respect node lifecycle.
+// Can use this to create goroutines that respect node lifecycle.
 func (n *BaseNode) Context() context.Context {
 	n.mu.RLock()
 	defer n.mu.RUnlock()

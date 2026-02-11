@@ -5,7 +5,7 @@ import (
 )
 
 // Message represents a message sent between nodes in the distributed system.
-// Students can extend this or wrap it to implement logical clocks (Lamport, vector clocks, etc.)
+// Can extend this or wrap it to implement logical clocks (Lamport, vector clocks, etc.)
 type Message struct {
 	// From is the ID of the sending node
 	From string
@@ -19,7 +19,7 @@ type Message struct {
 	// Timestamp is the real-time when the message was created
 	Timestamp time.Time
 
-	// Metadata allows students to add custom fields (e.g., logical clock values)
+	// Metadata allows to add custom fields (e.g., logical clock values)
 	Metadata map[string]interface{}
 }
 
