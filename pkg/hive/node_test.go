@@ -301,23 +301,38 @@ type SendMessageOnReceiveNode struct {
 	received bool
 }
 
-func (s *SendMessageOnReceiveNode) Receive(msg *Message) {
+func (s *SendMessageOnReceiveNode) Receive(msg *Message) error {
 	if !s.received {
 		s.received = true
-		time.Sleep(3 * time.Second)
-		s.BaseNode.SendMessage(msg)
+		<-s.ctx.Done() // wait cancel by BaseNode.Stop()
+		return s.BaseNode.SendMessage(msg)
 	}
+
+	return nil
 }
 
 func TestBaseNode_Receive_Stop_SendMessage_Deadlock(t *testing.T) {
 	t.Parallel()
 
-	node := &SendMessageOnReceiveNode{
-		BaseNode: *NewBaseNode("test-node"),
-	}
-	node.Start(t.Context())
-	msg := NewMessage("sender", "test-node", "test")
-	node.EnqueueMessage(msg)
+	done := make(chan interface{})
+	go func() {
+		node := &SendMessageOnReceiveNode{
+			BaseNode: *NewBaseNode("test-node"),
+		}
+		node.BaseNode.SetNodeRef(node)
+		assert.NoError(t, node.Start(t.Context()))
 
-	node.Stop()
+		msg := NewMessage("sender", "test-node", "test")
+
+		assert.NoError(t, node.EnqueueMessage(msg))
+		assert.NoError(t, node.Stop())
+
+		done <- nil
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("test timeout, it looks like deadlock")
+	}
 }
