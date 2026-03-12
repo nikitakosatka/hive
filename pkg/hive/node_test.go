@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -293,4 +294,30 @@ func TestBaseNode_Receive_Override(t *testing.T) {
 	require.Len(t, messages, 2)
 	assert.Equal(t, "msg1", messages[0].Payload)
 	assert.Equal(t, "msg2", messages[1].Payload)
+}
+
+type SendMessageOnReceiveNode struct {
+	BaseNode
+	received bool
+}
+
+func (s *SendMessageOnReceiveNode) Receive(msg *Message) {
+	if !s.received {
+		s.received = true
+		time.Sleep(3 * time.Second)
+		s.BaseNode.SendMessage(msg)
+	}
+}
+
+func TestBaseNode_Receive_Stop_SendMessage_Deadlock(t *testing.T) {
+	t.Parallel()
+
+	node := &SendMessageOnReceiveNode{
+		BaseNode: *NewBaseNode("test-node"),
+	}
+	node.Start(t.Context())
+	msg := NewMessage("sender", "test-node", "test")
+	node.EnqueueMessage(msg)
+
+	node.Stop()
 }
