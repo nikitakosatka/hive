@@ -59,6 +59,9 @@ type BaseNode struct {
 	id      string
 	running bool
 	mu      sync.RWMutex
+	// lifecycleMu serializes Start/Stop so a new run cannot start
+	// before the previous processing goroutine fully exits.
+	lifecycleMu sync.Mutex
 
 	// messageQueue holds incoming messages
 	messageQueue chan *Message
@@ -91,6 +94,9 @@ func (n *BaseNode) ID() string {
 
 // Start initializes the node and starts processing messages.
 func (n *BaseNode) Start(ctx context.Context) error {
+	n.lifecycleMu.Lock()
+	defer n.lifecycleMu.Unlock()
+
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -115,16 +121,21 @@ func (n *BaseNode) Start(ctx context.Context) error {
 
 // Stop gracefully shuts down the node.
 func (n *BaseNode) Stop() error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+	n.lifecycleMu.Lock()
+	defer n.lifecycleMu.Unlock()
 
+	n.mu.Lock()
 	if !n.running {
+		n.mu.Unlock()
 		return nil
 	}
 
 	n.running = false
-	if n.cancel != nil {
-		n.cancel()
+	cancel := n.cancel
+	n.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
 	}
 
 	// Don't close the channel - we may want to restart the node

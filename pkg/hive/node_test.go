@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -293,4 +294,45 @@ func TestBaseNode_Receive_Override(t *testing.T) {
 	require.Len(t, messages, 2)
 	assert.Equal(t, "msg1", messages[0].Payload)
 	assert.Equal(t, "msg2", messages[1].Payload)
+}
+
+type SendMessageOnReceiveNode struct {
+	BaseNode
+	received bool
+}
+
+func (s *SendMessageOnReceiveNode) Receive(msg *Message) error {
+	if !s.received {
+		s.received = true
+		<-s.ctx.Done() // wait cancel by BaseNode.Stop()
+		return s.BaseNode.SendMessage(msg)
+	}
+
+	return nil
+}
+
+func TestBaseNode_Receive_Stop_SendMessage_Deadlock(t *testing.T) {
+	t.Parallel()
+
+	done := make(chan interface{})
+	go func() {
+		node := &SendMessageOnReceiveNode{
+			BaseNode: *NewBaseNode("test-node"),
+		}
+		node.BaseNode.SetNodeRef(node)
+		assert.NoError(t, node.Start(t.Context()))
+
+		msg := NewMessage("sender", "test-node", "test")
+
+		assert.NoError(t, node.EnqueueMessage(msg))
+		assert.NoError(t, node.Stop())
+
+		done <- nil
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("test timeout, it looks like deadlock")
+	}
 }
